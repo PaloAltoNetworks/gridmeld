@@ -1,0 +1,2 @@
+include MANIFEST.in HISTORY.rst LICENSE.txt requirements.txt
+include doc/Makefile doc/admin-guide.rst doc/admin-guide.html
