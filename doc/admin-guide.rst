@@ -10,7 +10,7 @@ Overview
 `Cisco ISE
 <https://www.cisco.com/c/en/us/products/security/identity-services-engine/index.html>`_
 pxGrid to Palo Alto Networks
-`MimeMeld
+`MineMeld
 <https://www.paloaltonetworks.com/products/secure-the-network/subscriptions/minemeld>`_
 gateway application.
 
@@ -31,7 +31,7 @@ is provided in a GitHub Wiki.
 
 ``gridmeld`` is a Python3 application which uses these APIs to consume
 session data from the ISE pxGrid service, and publish IP indicators to
-MimeMeld for consumption by PAN-OS.  Sessions containing a TrustSec
+MineMeld for consumption by PAN-OS.  Sessions containing a TrustSec
 Security Group Tag (SGT) can be pushed by MineMeld to PAN-OS as
 ``registered-ip`` objects representing an IP-SGT mapping. The objects
 can then be used to configure Dynamic Address Groups (DAGs) for
@@ -372,7 +372,7 @@ and to multi-vendor peers.
 	  because MineMeld is currently implemented using Python 2.7,
 	  which does not support ``asyncio``.
 
-Install MimeMeld
+Install MineMeld
 ~~~~~~~~~~~~~~~~
 
 You will need to install an
@@ -461,7 +461,7 @@ name                       string      optional friendly hostname         null
 
    You must specify either ``api_key`` or ``api_username`` and ``api_password``.
 
-MimeMeld Config API
+MineMeld Config API
 ~~~~~~~~~~~~~~~~~~~
 
 The MineMeld config API is used to add and delete indicators in the
@@ -528,7 +528,7 @@ Running the ``gridmeld`` Gateway Application
 
 #. Parse command options.
 
-#. Initialize MimeMeld.
+#. Initialize MineMeld.
 
    * Verify ``localDB`` miner node specified using the config API.
    * Delete all existing indicators in ``localDB`` miner node.
@@ -568,7 +568,7 @@ It is also recommended that ``gridmeld`` be run under a service
 manager such as ``systemd`` for automatic start at system boot, and
 re-start on program failure.
 
-MimeMeld and pxGrid options can be specified in a JSON format file
+MineMeld and pxGrid options can be specified in a JSON format file
 using the ``--minemeld`` or ``--pxgrid`` option followed by the ``-F``
 option; for example using the configuration discussed previously::
 
