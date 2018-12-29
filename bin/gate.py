@@ -390,7 +390,7 @@ async def loop_pxgrid(kwargs, rest_secret, queue):
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
-    except (gridmeld.pxgrid.wsstomp.PxgridRestError,
+    except (gridmeld.pxgrid.wsstomp.PxgridWsStompError,
             aiohttp.ClientError) as e:
         logger.error('%s: %s: %s', inspect.stack()[0][3],
                      e.__class__.__name__, e)
