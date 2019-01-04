@@ -95,9 +95,6 @@ Command options can be displayed using ``--help`` (e.g.,
 Cisco ISE pxGrid
 ----------------
 
-.. note:: ISE 2.4 or greater is required.  ``gridmeld`` has been
-          tested with ISE 2.4.0.357.
-
 ISE must be configured for pxGrid.  By default pxGrid is disabled and
 can be enabled at Administration->Deployment->Deployment Nodes
 List-> *your ISE node*.
@@ -105,6 +102,17 @@ List-> *your ISE node*.
 The ``grid.py`` and ``gate.py`` pxGrid clients can use either SSL
 client certificate authentication or username/password
 authentication.
+
+.. note:: ISE 2.4 or greater is required.  ``gridmeld`` has been
+          tested with ISE 2.4.0.357.
+
+          A pxGrid 2.0
+	  `test-bed ISO image
+	  <https://developer.cisco.com/fileMedia/download/36c70887-c7bd-46b0-93c6-c6778ca62bd7>`_
+	  is available from the
+	  `getting started
+	  <https://developer.cisco.com/docs/pxgrid/#getting-started>`_
+	  section of the documentation.
 
 Export the ISE Certificate Services Root CA
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -655,9 +663,5 @@ References
   <https://developer.cisco.com/docs/pxgrid/#whitepaper>`_
 
 - `ISE 2.4 test-bed ISO image
-  <https://cisco.app.box.com/v/ISE-Eval>`_
+  <https://developer.cisco.com/fileMedia/download/36c70887-c7bd-46b0-93c6-c6778ca62bd7>`_
 
-  .. note:: The pxGrid 2.0 test-bed image at
-	    `https://developer.cisco.com/docs/pxgrid/#getting-started
-	    <https://developer.cisco.com/docs/pxgrid/#getting-started>`_
-	    points to an ISE 2.2 ISO.
