@@ -35,10 +35,9 @@ MineMeld for consumption by PAN-OS.  Sessions containing a TrustSec
 Security Group Tag (SGT) can be pushed by MineMeld to PAN-OS as
 ``registered-ip`` objects representing an IP-SGT mapping. The objects
 can then be used to configure Dynamic Address Groups (DAGs) for
-security policy enforcement.  PAN-OS 9.0 (currently in beta) has been
-enhanced to update DAGs immediately, compared to a delay of up to 60
-seconds in previous versions, and ``registed-ip`` object capacity has
-been increased.
+security policy enforcement.  PAN-OS 9.0 has been enhanced to update
+DAGs immediately, compared to a delay of up to 60 seconds in previous
+versions, and ``registed-ip`` object capacity has been increased.
 
 ``gridmeld`` is non-blocking (using
 `asyncio <https://docs.python.org/3/library/asyncio.html>`_)
