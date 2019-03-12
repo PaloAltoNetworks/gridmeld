@@ -275,6 +275,9 @@ async def loop_minemeld(node, kwargs, queue):
                 x = await queue.get()
                 logger.debug('%s', x)
 
+                if 'state' not in x:
+                    logger.error('no state: %s', x)
+                    continue
                 if 'ipAddresses' not in x:
                     logger.info('no ipAddresses: %s', x)
                     continue
