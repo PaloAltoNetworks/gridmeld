@@ -101,7 +101,7 @@ async def loop_main():
             sys.exit(1)
 
     logger = logging.getLogger(os.path.basename(sys.argv[0]))
-    logger.info('starting')
+    logger.info('starting (gridmeld %s)', __version__)
 
     m_kwargs = {}
     for x in ['uri', 'username', 'password',
@@ -161,6 +161,13 @@ async def loop_main():
 async def init_minemeld(node, m_kwargs):
     try:
         async with gridmeld.minemeld.api.MinemeldApi(**m_kwargs) as api:
+            resp = await api.info()
+            if resp.status == 200:
+                result = await resp.json()
+                try:
+                    logger.info('MineMeld %s', result['result']['version'])
+                except KeyError as e:
+                    logger.error('MineMeld %s', e)
             resp = await api.status()
             resp.raise_for_status()
             result = await resp.json()
@@ -238,6 +245,11 @@ async def init_pxgrid(x_kwargs):
                 args['secret'] = result['secret']
             else:
                 args['secret'] = None
+
+            resp = await api.version()
+            if resp.status == 200:
+                data = await resp.json()
+                logger.info('pxGrid %s', data)
 
     except asyncio.CancelledError:
         return
