@@ -81,6 +81,18 @@ class MinemeldApi(UtilMixin):
         resp = await self.session.get(**kwargs)
         return resp
 
+    async def info(self):
+        path = '/status/info'
+        url = self.uri + path
+
+        kwargs = {
+            'url': url,
+            'ssl': self.ssl,
+        }
+
+        resp = await self.session.get(**kwargs)
+        return resp
+
     async def get_indicators(self, node=None):
         if node is None:
             raise RequiredArgsError('node required')

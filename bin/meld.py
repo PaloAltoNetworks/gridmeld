@@ -67,6 +67,12 @@ def main():
 async def _loop(kwargs, options):
     try:
         async with MinemeldApi(**kwargs) as api:
+            if options['info']:
+                resp = await api.info()
+                print_status('info', resp)
+                await print_response(options, resp)
+                resp.raise_for_status()
+
             if options['status']:
                 resp = await api.status()
                 print_status('status', resp)
@@ -146,6 +152,7 @@ def parse_opts():
         'password': None,
         'node': None,
         'status': False,
+        'info': False,
         'get': False,
         'append': None,
         'delete-all': False,
@@ -160,7 +167,7 @@ def parse_opts():
     long_options = [
         'help', 'version', 'debug=',
         'uri=', 'username=', 'password=', 'node=',
-        'status', 'get', 'append=', 'delete-all',
+        'status', 'info', 'get', 'append=', 'delete-all',
         'verify=',
         'timeout=',
     ]
@@ -194,6 +201,8 @@ def parse_opts():
             options['node'] = arg
         elif opt == '--status':
             options['status'] = True
+        elif opt == '--info':
+            options['info'] = True
         elif opt == '--get':
             options['get'] = True
         elif opt == '--append':
@@ -261,6 +270,7 @@ def usage():
     --password password      API password
     --node name              Node name
     --status                 status API request
+    --info                   info API request
     --get                    get indicators API request
     --delete-all             delete all indicators
     --append path            append indicators API request
