@@ -291,7 +291,10 @@ async def loop_minemeld(node, kwargs, queue):
                     logger.error('no state: %s', x)
                     continue
                 if 'ipAddresses' not in x:
-                    logger.info('no ipAddresses: %s', x)
+                    logger.warning('no ipAddresses: %s', x)
+                    continue
+                if not x['ipAddresses']:
+                    logger.warning('empty ipAddresses: %s', x)
                     continue
 
                 if x['state'] == 'STARTED':
