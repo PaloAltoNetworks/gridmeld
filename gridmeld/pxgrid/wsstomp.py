@@ -139,8 +139,8 @@ class PxgridWsStomp(UtilMixin):
                         resp.raise_for_status()
                         # XXX response has no content-type
                         sessions = await resp.json(content_type=None)
-                        self._log(logging.INFO, 'existing sessions: %d',
-                                  len(sessions['sessions']))
+                        self._log(logging.INFO, '%s: %d session objects',
+                                  'get_sessions()', len(sessions['sessions']))
                         for x in sessions['sessions']:
                             yield x
 
