@@ -198,8 +198,20 @@ class PxgridWsStomp(UtilMixin):
     # only returns for MESSAGE
     async def stomp_read_message(self):
         while True:
-            message = await self.ws.receive_bytes()
-            s_in = StringIO(message.decode('utf-8'))
+            msg = await self.ws.receive()
+            if msg.type != aiohttp.http.WSMsgType.BINARY:
+                if msg.type in (aiohttp.http.WSMsgType.CLOSE,
+                                aiohttp.http.WSMsgType.CLOSING,
+                                aiohttp.http.WSMsgType.CLOSED):
+                    x = 'peer closed connection: {}:{!r}'.format(
+                        msg.type, msg.data)
+                    raise RuntimeError(x)
+                else:
+                    x = 'websocket error: {}:{!r}'.format(
+                        msg.type, msg.data)
+                    raise RuntimeError(x)
+
+            s_in = StringIO(msg.data.decode('utf-8'))
             try:
                 stomp = StompFrame.parse(s_in)
             except ValueError as e:
