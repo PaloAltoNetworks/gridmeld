@@ -336,7 +336,7 @@ async def loop_minemeld(node, kwargs, queue):
                         try:
                             ip = ipaddress.ip_address(addr)
                         except ValueError as e:
-                            logger.error('invalid ip: %s: %s', addr, e)
+                            logger.error('invalid IP: %s: %s', addr, e)
                             continue
                         if str(ip) not in sdb:
                             logger.warning('%s %s: not connected',
