@@ -117,30 +117,37 @@ async def loop_main():
 
     try:
         node = options['m']['node']
-        coros = (
+        coros = [
             init_minemeld(node, m_kwargs),
-            init_pxgrid(x_kwargs),
-        )
+        ]
+        if not options['x']['replay']:
+            coros.append(init_pxgrid(x_kwargs))
+
         x = await asyncio.gather(*coros)
         logger.debug('%s', x)
 
         if not all(x):
             raise RuntimeError
-        x_options = x[1]
-
-        x_kwargs2 = {}
-        for x in ['nodename', 'cert', 'verify', 'timeout']:
-            if options['x'][x] is not None:
-                x_kwargs2[x] = options['x'][x]
-        for x in ['secret', 'wsurl', 'peernode', 'topic', 'restbaseurl']:
-            if x_options[x] is not None:
-                x_kwargs2[x] = x_options[x]
 
         queue = asyncio.Queue()
-        coros = (
+        coros = [
             loop_minemeld(node, m_kwargs, queue),
-            loop_pxgrid(x_kwargs2, x_options['rest_secret'], queue),
-        )
+        ]
+
+        if options['x']['replay']:
+            coros.append(loop_replay(options['x']['replay'], queue))
+        else:
+            x_options = x[1]
+            x_kwargs2 = {}
+            for x in ['nodename', 'cert', 'verify', 'timeout']:
+                if options['x'][x] is not None:
+                    x_kwargs2[x] = options['x'][x]
+            for x in ['secret', 'wsurl', 'peernode', 'topic', 'restbaseurl']:
+                if x_options[x] is not None:
+                    x_kwargs2[x] = x_options[x]
+            coros.append(loop_pxgrid(x_kwargs2, x_options['rest_secret'],
+                                     queue))
+
         tasks = map(asyncio.ensure_future, coros)
         done, pending = await asyncio.wait(
             tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -422,6 +429,20 @@ async def loop_pxgrid(kwargs, rest_secret, queue):
         logger.info('%s exiting', inspect.stack()[0][3])
 
 
+async def loop_replay(sessions, queue):
+    try:
+        for x in sessions['sessions']:
+            await queue.put(x)
+        await asyncio.sleep(60*15)  # XXX
+
+    except asyncio.CancelledError:
+        logger.debug('%s: CancelledError', inspect.stack()[0][3])
+    except Exception as e:
+        logger.error('%s', e, exc_info=True)
+    finally:
+        logger.info('%s exiting', inspect.stack()[0][3])
+
+
 def parse_opts():
     def opt_verify(x):
         if x == 'yes':
@@ -475,6 +496,7 @@ def parse_opts():
 
     options_x = {
         'config': {},
+        'replay': None,
         'hostname': None,
         'nodename': None,
         'password': None,
@@ -500,7 +522,7 @@ def parse_opts():
         # MineMeld
         'minemeld', 'uri=', 'username=', 'node=',
         # pxGrid
-        'pxgrid', 'nodename=', 'cert=',
+        'pxgrid', 'nodename=', 'cert=', 'replay=',
     ]
 
     try:
@@ -525,6 +547,18 @@ def parse_opts():
                 with open(arg, 'r') as f:
                     x = json.load(f)
                     opt_update(context, 'config', x)
+            except (IOError, ValueError) as e:
+                print('%s: %s' % (arg, e), file=sys.stderr)
+                sys.exit(1)
+        elif opt == '--replay':
+            try:
+                with open(arg, 'r') as f:
+                    x = json.load(f)
+                    if 'sessions' not in x:
+                        print('%s: no "sessions" key in session object' %
+                              arg, file=sys.stderr)
+                        sys.exit(1)
+                    opt_set(context, opt[2:], x)
             except (IOError, ValueError) as e:
                 print('%s: %s' % (arg, e), file=sys.stderr)
                 sys.exit(1)
@@ -622,6 +656,7 @@ def usage():
       --cert path            SSL client certificate file
       --verify opt           SSL server verify option: yes|no|path
       --timeout timeout      connect, read timeout
+      --replay json          replay session objects
       -F path                JSON options (multiple -F's allowed)
     --syslog facility        log to syslog with facility
                              (default: log to stderr)
