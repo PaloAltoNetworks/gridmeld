@@ -311,14 +311,15 @@ async def loop_minemeld(node, kwargs, queue):
                         except ValueError as e:
                             logger.error('invalid IP: %s: %s', addr, e)
                             continue
-                        if 'ctsSecurityGroup' not in x:
-                            logger.info('%s: no SGT', ip)
-                            continue
-                        sgt = x['ctsSecurityGroup']
-                        username = None
+                        sgt = user = None
+                        if 'ctsSecurityGroup' in x:
+                            sgt = x['ctsSecurityGroup']
                         if 'userName' in x:
-                            username = x['userName']
-                        indicator = indicator_object(ip, sgt, username)
+                            user = x['userName']
+                        if not (sgt or user):
+                            logger.warning('%s: no SGT or user', ip)
+                            continue
+                        indicator = indicator_object(ip, sgt, user)
                         resp = await retry.call(
                             api.append_indicators,
                             node=node,
@@ -329,7 +330,7 @@ async def loop_minemeld(node, kwargs, queue):
                                            resp, indicator)
                             continue
                         sdb[str(ip)] = indicator
-                        log_event(str(ip), x['state'], sgt, username)
+                        log_event(str(ip), x['state'], sgt, user)
 
                 elif x['state'] == 'DISCONNECTED':
                     for addr in x['ipAddresses']:
@@ -385,9 +386,9 @@ def log_http_error(name, resp, indicator):
     logger.error('%s: %d %s: %s', name, resp.status, resp.reason, indicator)
 
 
-def log_event(indicator, state, sgt, username):
-    logger.info('%s %s: sgt=%s username=%s', indicator, state,
-                sgt, username)
+def log_event(indicator, state, sgt, user):
+    logger.info('%s %s: sgt=%s user=%s', indicator, state,
+                sgt, user)
 
 
 def indicator_type(ip):
@@ -397,12 +398,12 @@ def indicator_type(ip):
         return 'IPv6'
 
 
-def indicator_object(ip, sgt, username):
+def indicator_object(ip, sgt, user):
     x = {
         'indicator': str(ip),
         'type': indicator_type(ip),
         'share_level': 'red',
-        'user': username,
+        'user': user,
         'sgt': sgt,
         'ttl': 'disabled',  # any non-int disables expiration
     }
