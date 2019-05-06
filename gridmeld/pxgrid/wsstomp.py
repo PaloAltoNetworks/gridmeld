@@ -144,6 +144,8 @@ class PxgridWsStomp(UtilMixin):
                         for x in sessions['sessions']:
                             yield x
 
+                self._log(logging.INFO, 'processing events from %s %s',
+                          self.wsurl, self.topic)
                 while True:
                     try:
                         message = await self.stomp_read_message()
