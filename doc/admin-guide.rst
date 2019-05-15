@@ -518,6 +518,7 @@ Running the ``gridmeld`` Gateway Application
         --cert path            SSL client certificate file
         --verify opt           SSL server verify option: yes|no|path
         --timeout timeout      connect, read timeout
+        --replay json          replay session objects
         -F path                JSON options (multiple -F's allowed)
       --syslog facility        log to syslog with facility
                                (default: log to stderr)
