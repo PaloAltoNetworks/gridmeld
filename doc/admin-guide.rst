@@ -539,7 +539,6 @@ Running the ``gridmeld`` Gateway Application
 #. Initialize MineMeld.
 
    * Verify ``localDB`` miner node specified using the config API.
-   * Delete all existing indicators in ``localDB`` miner node.
 
 #. Initialize pxGrid.
 
@@ -551,10 +550,11 @@ Running the ``gridmeld`` Gateway Application
 
 #. pxGrid loop:
 
+   * Get existing indicators in MineMeld ``localDB`` miner node.
    * Perform bulk download of all existing sessions using the REST API.
-   * Send existing session events to MineMeld loop (using a Queue).
+   * Sync sessions with ``localDB`` indicators.
    * Subscribe to session directory updates using the WebSocket API.
-   * Send session updates to MineMeld loop.
+   * Send session updates to MineMeld loop (using a Queue).
 
 #. MineMeld loop:
 
