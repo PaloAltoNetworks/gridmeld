@@ -39,6 +39,8 @@ from gridmeld.pxgrid.rest import PxgridRest
 from gridmeld.util.mixin import UtilMixin
 from gridmeld import DEBUG1, DEBUG2, DEBUG3
 
+EOS = object  # End of sessions sentinel when subscribe(get_sessions=True)
+
 
 class PxgridWsStompError(Exception):
     pass
@@ -143,6 +145,8 @@ class PxgridWsStomp(UtilMixin):
                                   'get_sessions()', len(sessions['sessions']))
                         for x in sessions['sessions']:
                             yield x
+
+                        yield EOS
 
                 self._log(logging.INFO, 'processing events from %s %s',
                           self.wsurl, self.topic)

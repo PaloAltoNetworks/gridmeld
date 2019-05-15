@@ -36,6 +36,7 @@ sys.path[:0] = [os.path.join(libpath, os.pardir)]
 
 import gridmeld.pxgrid.rest
 import gridmeld.pxgrid.wsstomp
+from gridmeld.pxgrid.wsstomp import EOS
 import gridmeld.minemeld.api
 from gridmeld.util.util_daemon import daemon
 from gridmeld import DEBUG1, DEBUG2, DEBUG3, __version__
@@ -188,9 +189,6 @@ async def init_minemeld(node, m_kwargs):
                 raise ValueError('node "%s" with class "%s" not found' %
                                  (node, class_))
 
-            resp = await api.delete_all_indicators(node=node)
-            resp.raise_for_status()
-
     except asyncio.CancelledError:
         return
     except (gridmeld.minemeld.api.RequiredArgsError,
@@ -290,8 +288,32 @@ async def loop_minemeld(node, kwargs, queue):
 
     try:
         async with gridmeld.minemeld.api.MinemeldApi(**kwargs) as api:
+            resp = await api.get_indicators(node)
+            resp.raise_for_status()
+            result = await resp.json()
+            indicators = {}
+            for x in result['result']:
+                keys = [k for k in x.keys() if not k.startswith('_')]
+                indicator = {k: x[k] for k in keys}
+                indicator['ttl'] = 0
+                indicators[indicator['indicator']] = indicator
+
+            sessions_synced = False
+
             while True:
                 x = await queue.get()
+
+                if x is EOS:  # end of sessions download
+                    sessions_synced = True
+                    sdb = {k: indicators[k] for k in indicators
+                           if not indicators[k]['ttl'] == 0}
+                    data = [indicators[k] for k in indicators]
+                    resp = await api.append_indicators(node=node,
+                                                       json=data)
+                    resp.raise_for_status()
+                    logger.info('SDB size after session sync: %d', len(sdb))
+                    continue
+
                 logger.debug('%s', x)
 
                 if 'state' not in x:
@@ -320,6 +342,9 @@ async def loop_minemeld(node, kwargs, queue):
                             logger.warning('%s: no SGT or user', ip)
                             continue
                         indicator = indicator_object(ip, sgt, user)
+                        if not sessions_synced:
+                            indicators[str(ip)] = indicator
+                            continue
                         resp = await retry.call(
                             api.append_indicators,
                             node=node,
@@ -338,6 +363,10 @@ async def loop_minemeld(node, kwargs, queue):
                             ip = ipaddress.ip_address(addr)
                         except ValueError as e:
                             logger.error('invalid IP: %s: %s', addr, e)
+                            continue
+                        if not sessions_synced:
+                            logger.warning('%s DISCONNECTED in get_sessions():'
+                                           ' %s', ip, x)
                             continue
                         if str(ip) not in sdb:
                             logger.warning('%s %s: not connected',
@@ -361,6 +390,9 @@ async def loop_minemeld(node, kwargs, queue):
                     for addr in x['ipAddresses']:
                         logger.info('%s %s: no action on event',
                                     addr, x['state'])
+                    continue
+
+                if not sessions_synced:
                     continue
 
                 msg = 'SDB size: %d' % len(sdb)
@@ -434,7 +466,8 @@ async def loop_replay(sessions, queue):
     try:
         for x in sessions['sessions']:
             await queue.put(x)
-        await asyncio.sleep(60*15)  # XXX
+        await queue.put(EOS)
+        await asyncio.sleep(15)  # XXX
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
