@@ -63,7 +63,7 @@ on PyPi for installing with
 `pip <https://pip.pypa.io/en/stable/installing/>`_.
 
 ``gridmeld`` should run on any Unix system with Python 3.6, and has been
-tested on OpenBSD 6.3 and Ubuntu 18.04.  Its module dependencies are
+tested on OpenBSD 6.4 and Ubuntu 18.04.  Its module dependencies are
 ``aiohttp`` and ``tenacity``.
 
 gridmeld Command Line Programs
@@ -638,6 +638,218 @@ When run in the foreground, ``gate.py`` is terminated with ^C (Control-C)::
    INFO gate.py loop_minemeld exiting
    INFO gate.py loop_pxgrid exiting
 
+Ubuntu 18.04 Configuration
+--------------------------
+
+This section covers recommended system configuration tasks on Ubuntu
+18.04.
+
+rsyslogd
+~~~~~~~~
+
+The ``gate.py --syslog`` option is used to specify that syslog is used
+for logging, and to specify the log facility to use.  On Ubuntu
+`rsyslogd
+<http://manpages.ubuntu.com/manpages/bionic/man8/rsyslogd.8.html>`_ is
+used for system logging, and when using one of the ``local0`` through
+``local7`` facilities the log file is ``/var/log/syslog``.  You can
+configure ``rsyslogd`` to use another log file such as
+``/var/log/gridmeld.log`` with the following steps::
+
+  $ cat 20-gridmeld.conf
+  local0.debug                    /var/log/gridmeld.log
+  # Comment out the following line to allow further message processing.
+  # This means you'll also get messages in /var/log/syslog.
+  & stop
+
+  $ sudo bash
+  # >/var/log/gridmeld.log
+  # chmod 640 /var/log/gridmeld.log
+  # chown syslog:adm /var/log/gridmeld.log
+
+  # cp 20-gridmeld.conf /etc/rsyslog.d/
+  # systemctl restart rsyslog
+
+logrotate
+~~~~~~~~~
+
+After configuring ``rsyslogd`` to log to a new log file, you should
+configure it for log rotation.  Ubuntu uses
+`logrotate
+<http://manpages.ubuntu.com/manpages/bionic/man8/logrotate.8.html>`_
+for log file rotation.  You can configure ``logrotate`` for rotation
+of the new log file with the following steps::
+
+  $ cat gridmeld
+  /var/log/gridmeld.log
+  {
+          rotate 7
+          daily
+          missingok
+          notifempty
+          delaycompress
+          compress
+  }
+
+  $ sudo cp gridmeld /etc/logrotate.d/
+
+systemd
+~~~~~~~
+
+`systemd
+<http://manpages.ubuntu.com/manpages/bionic/man1/systemd.1.html>`_ is
+a system and service manager for Linux, and is the default init system
+in Ubuntu since 16.04.  The following describes how to install and
+enable a custom ``systemd`` service unit file on Ubuntu 18.04 for
+``gate.py``.  This will start ``gate.py`` at system boot, and restart
+it when it exits.
+
+Access Control
+..............
+
+``gate.py`` will run as user ``gridmeld``, group ``gridmeld`` using
+the service unit *User* and *Group* options.
+
+Directories for configuration files will be owner root:gridmeld and
+mode 750.  Configuration files will be owner root:root and mode 644.
+
+gridmeld:gridmeld is a powerless user and group that can read the
+configuration files but cannot modify them.
+
+Create ``gridmeld`` user and group
+..................................
+
+::
+
+  $ sudo bash
+  # groupadd gridmeld
+  # useradd -g gridmeld -s /usr/sbin/nologin gridmeld
+
+Create ``/opt/gridmeld`` for Config
+...................................
+
+The following directory structure is created:
+
+- ``/opt/gridmeld/etc/``
+
+  Used for JSON -F config files.
+
+- ``/opt/gridmeld/ssl/``
+
+  Used for SSL server certificates.
+
+- ``/opt/gridmeld/ssl/private/``
+
+  Used for SSL private keys.
+
+::
+
+  # mkdir -p /opt/gridmeld/etc/
+  # mkdir -p /opt/gridmeld/ssl/private/
+  # find /opt/gridmeld -type d -exec chown root:gridmeld {} \;
+  # find /opt/gridmeld -type d -exec chmod 750 {} \;
+
+Sample JSON Config Files
+........................
+
+::
+
+  $ cat gate-mm.json
+  {
+      "uri": "https://minemeld.santan.local",
+      "username": "gridmeld",
+      "password": "paloalto",
+      "node": "localDB-1554312231193",
+      "verify": "/opt/gridmeld/ssl/mm-cert.pem"
+  }
+
+  $ cat gate-ise.json
+  {
+      "hostname": ["ise-3.santan.local"],
+      "nodename": "paloalto04",
+      "verify": "/opt/gridmeld/ssl/ise3-ca.pem",
+      "cert": "/opt/gridmeld/ssl/private/ise3-paloalto04-nopw.pem"
+  }
+
+Install JSON Config Files
+.........................
+
+Copy your JSON files for the ``--pxgrid`` and ``--minemeld -F``
+options into ``/opt/gridmeld/etc/``, for example::
+
+  $ sudo bash
+  # cp gate-ise.json /opt/gridmeld/etc/
+  # cp gate-mm.json /opt/gridmeld/etc/
+
+Install SSL Certificates and Private Keys
+.........................................
+
+If you have certificate files for the ``--verify`` options, copy them
+into ``/opt/gridmeld/ssl/``, for example::
+
+  # cp ise-ca.pem /opt/gridmeld/ssl/
+  # cp mm-ca.pem /opt/gridmeld/ssl/
+
+If you are using client certificate authentication for pxGrid, copy
+the SSL private key into ``/opt/gridmeld/ssl/private/``, for example::
+
+  # cp ise-paloalto04-nopw.pem /opt/gridmeld/ssl/private/
+
+Set File Owner and Mode
+.......................
+
+After populating the config directory you should set owner:group and
+mode for the files using::
+
+  # find /opt/gridmeld -type f -exec chown root:root {} \;
+  # find /opt/gridmeld -type f -exec chmod 644 {} \;
+
+Configure systemd gridmeld Service Unit File
+............................................
+
+Modify the ``gridmeld.service`` unit file *Environment* options as
+needed for your environment::
+
+  $ cat gridmeld.service
+  [Unit]
+  Description=Palo Alto Networks gridmeld Gateway
+  Documentation=https://github.com/PaloAltoNetworks/gridmeld
+  After=network.target
+
+  [Service]
+  Environment=PXGRID='--pxgrid -F /opt/gridmeld/etc/gate-ise.json'
+  Environment=MINEMELD='--minemeld -F /opt/gridmeld/etc/gate-mm.json'
+  Environment=ARGS='--syslog local0'
+  Type=simple
+  Restart=always
+  RestartSec=10s
+  User=gridmeld
+  Group=gridmeld
+  ExecStart=/usr/local/bin/gate.py $PXGRID $MINEMELD $ARGS
+
+  [Install]
+  WantedBy=multi-user.target
+
+Copy the service unit file in place and verify::
+
+  $ sudo bash
+  # cp gridmeld.service /lib/systemd/system
+
+  # systemctl daemon-reload
+  # systemctl start gridmeld
+  # systemctl status gridmeld
+
+Enable the service to start on boot and verify it is started after
+a system reboot::
+
+  # systemctl stop gridmeld
+  # systemctl enable gridmeld
+  # systemctl reboot
+
+Wait for boot, then check the service status::
+
+  # systemctl status gridmeld
+
 References
 ----------
 
@@ -664,4 +876,3 @@ References
 
 - `ISE 2.4 test-bed ISO image
   <https://developer.cisco.com/fileMedia/download/36c70887-c7bd-46b0-93c6-c6778ca62bd7>`_
-
