@@ -7,6 +7,9 @@
 # See https://stomp.github.io/ for specification
 
 from enum import Enum
+import logging
+
+LOG = logging.getLogger(__name__).log
 
 
 class StompFrame:
@@ -52,6 +55,9 @@ class StompFrame:
     # Parses a file-like object and creates StompFrame
     @staticmethod
     def parse(f_input):
+        def byteshex(x):
+            return ' '.join('%02x' % n for n in x.encode('utf-8'))
+
         content_length = None
         stomp = StompFrame()
         stomp.set_command(StompCommand(f_input.readline().rstrip('\r\n')))
@@ -65,13 +71,33 @@ class StompFrame:
                 content_length = int(value)
         if content_length is not None:
             content = f_input.read(content_length)
-            if f_input.read() != '\0':
-                raise ValueError('Byte after STOMP Body not NULL')
+            if len(content) != content_length:
+                LOG(logging.WARN, 'len %d != content_length %d',
+                    len(content), content_length)
+            if content and content[-1] == '\0':
+                # XXX bug seen for some messages in
+                # ISE 2.4.0.357 Cumulative Patch 8
+                LOG(logging.WARN, 'STOMP Body last byte is NULL: %d',
+                    content_length)
+                content = content.rstrip('\0')
+            x = f_input.read(1)
+            if x and x != '\0':
+                LOG(logging.WARN, 'Byte after STOMP Body not NULL: %s',
+                    byteshex(x))
+            if not x:
+                LOG(logging.WARN, 'EOF after content-length')
+            x = f_input.read()
+            if x:
+                LOG(logging.WARN, 'Bytes after NULL: %s',
+                    byteshex(x))
         else:
             remaining = f_input.read()
             content = remaining[:-1]
+            if content and content[-1] == '\0':
+                LOG(logging.WARN, 'STOMP Body last byte is NULL')
             if remaining[-1] != '\0':
-                raise ValueError('Byte after STOMP Body not NULL')
+                LOG(logging.WARN, 'Byte after STOMP Body not NULL: %s',
+                    byteshex(remaining[-1]))
         if len(content) > 0:
             stomp.set_content(content)
         return stomp

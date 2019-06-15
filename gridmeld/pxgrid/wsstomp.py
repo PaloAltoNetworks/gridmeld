@@ -155,8 +155,10 @@ class PxgridWsStomp(UtilMixin):
                         message = await self.stomp_read_message()
                         try:
                             sessions = json.loads(message)
-                        except TypeError as e:
-                            raise PxgridWsStompError('Bad JSON: %s' % e)
+                        except (TypeError,
+                                json.decoder.JSONDecodeError) as e:
+                            raise PxgridWsStompError('%s: Bad JSON: %s' %
+                                                     (type(e).__name__, e))
                         for x in sessions['sessions']:
                             yield x
                     except RuntimeError as e:
