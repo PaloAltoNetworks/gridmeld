@@ -1,6 +1,33 @@
 ``gridmeld`` Release History
 ============================
 
+0.3.0 (2019-06-15)
+------------------
+
+- gate.py: Append indicator to localDB if SGT or user in session.
+  Previously only pushed if SGT in session.
+
+- pxgrid/wsstomp.py: Log message prior to reading events from session
+  topic.
+
+- gate.py, pxgrid/wsstomp.py: Instead of deleting all indicators from
+  the localdb node at startup, perform a simple sync of existing
+  localdb indicators with bulk session download.
+
+- Documentation updates.
+
+- admin-guide.rst: Add section for recommended system configuration
+  tasks on Ubuntu 18.04.
+
+- pxgrid/stomp.py, pxgrid/wsstomp.py:
+
+  In ISE 2.4.0.357 Cumulative Patch 8 some StompCommand.MESSAGE frames
+  with content-length header can include the trailing NULL in the
+  content-length, resulting in a message body with trailing NULL.
+  Result is "json.decoder.JSONDecodeError: Extra data: xxx" exception
+  from json.loads() with the object.  Detect this and strip the NULL.
+  Add warning logging to detect this and other invalid conditions.
+
 0.2.0 (2019-04-20)
 ------------------
 
