@@ -510,6 +510,7 @@ Running the ``gridmeld`` Gateway Application
         --node name            localDB miner node name
         --verify opt           SSL server verify option: yes|no|path
         --timeout timeout      connect, read timeout
+	--policy path          JSON session processing policy object
         -F path                JSON options (multiple -F's allowed)
       --pxgrid                 pxGrid options follow
         --hostname hostname    ISE hostname (multiple --hostname's allowed)
@@ -576,6 +577,9 @@ It is also recommended that ``gridmeld`` be run under a service
 manager such as ``systemd`` for automatic start at system boot, and
 re-start on program failure.
 
+MineMeld and pxGrid JSON Options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 MineMeld and pxGrid options can be specified in a JSON format file
 using the ``--minemeld`` or ``--pxgrid`` option followed by the ``-F``
 option; for example using the configuration discussed previously::
@@ -597,20 +601,64 @@ option; for example using the configuration discussed previously::
       "verify": "ise-ca.pem"
   }
 
+MineMeld Session Processing Policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, **IPv4** and **IPv6** indicator types will be processed,
+and
+`session object
+<https://github.com/cisco-pxgrid/pxgrid-rest-ws/wiki/Session-Directory#session-object>`_
+``ctsSecurityGroup`` and ``userName`` fields are mapped to localDB
+``sgt`` and ``user`` attributes.  The default policy is represented by
+the JSON object::
+
+  {
+      "indicator_types": ["IPv4", "IPv6"],
+      "attribute_map": {
+          "ctsSecurityGroup": "sgt",
+          "userName": "user"
+      }
+  }
+
+The ``gate.py --minemeld --policy`` *path* option can be used to change the
+default policy.  The following JSON object will process only **IPv4**
+indicator types and include the ``endpointOperatingSystem`` field using
+the ``os`` attribute when it exists in a session::
+
+  $ cat policy.json
+  {
+      "indicator_types": ["IPv4"],
+      "attribute_map": {
+          "ctsSecurityGroup": "sgt",
+          "userName": "user",
+          "endpointOperatingSystem": "os"
+      }
+  }
+
+.. note:: Attribute names must not begin with the underscore character
+          (**_**).
+
 ``gate.py`` Example
 ~~~~~~~~~~~~~~~~~~~
 ::
 
    $ gate.py --minemeld -F gate-mm.json --pxgrid -F gate-ise-pw.json
-   INFO gate.py starting
-   INFO gate.py 172.16.1.100 STARTED: sgt=Auditors username=user100
+   INFO gate.py starting (gridmeld 0.3.0)
+   INFO gate.py MineMeld 0.9.60
+   INFO gate.py pxGrid 2.0.0.13
+   INFO gridmeld.pxgrid.wsstomp get_sessions(): 2 session objects
+   INFO gridmeld.pxgrid.wsstomp processing events from wss://ise-3.santan.local:8910/pxgrid/ise/pubsub /topic/com.cisco.ise.session
+   INFO gate.py SDB size after session sync: 2
+   INFO gate.py 172.16.1.101 STARTED: {'sgt': 'Contractors', 'user': 'user101'}
+   INFO gate.py SDB size: 3: indicators (up to 5): ['172.16.1.100', '172.16.1.102', '172.16.1.101']
+   INFO gate.py 172.16.1.100 DISCONNECTED: {'sgt': 'Auditors', 'user': 'user100'}
+   INFO gate.py SDB size: 2: indicators (up to 5): ['172.16.1.102', '172.16.1.101']
+   INFO gate.py 172.16.1.101 DISCONNECTED: {'sgt': 'Contractors', 'user': 'user101'}
+   INFO gate.py SDB size: 1: indicators (up to 5): ['172.16.1.102']
+   INFO gate.py 172.16.1.102 DISCONNECTED: {'sgt': 'Employees', 'user': 'user102'}
+   INFO gate.py SDB size: 0
+   INFO gate.py 172.16.1.100 STARTED: {'sgt': 'Auditors', 'user': 'user100'}
    INFO gate.py SDB size: 1: indicators (up to 5): ['172.16.1.100']
-   INFO gate.py 172.16.1.101 STARTED: sgt=Contractors username=user101
-   INFO gate.py SDB size: 2: indicators (up to 5): ['172.16.1.100', '172.16.1.101']
-   INFO gate.py 172.16.1.102 STARTED: sgt=Developers username=user102
-   INFO gate.py SDB size: 3: indicators (up to 5): ['172.16.1.100', '172.16.1.101', '172.16.1.102']
-   INFO gate.py 172.16.1.101 DISCONNECTED: sgt=Contractors username=user101
-   INFO gate.py SDB size: 2: indicators (up to 5): ['172.16.1.100', '172.16.1.102']
 
 Verify ``registered-ip`` objects are being pushed to a configured PAN-OS
 system::

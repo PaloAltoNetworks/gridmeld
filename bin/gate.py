@@ -47,6 +47,13 @@ logger = None
 SYSLOG_DEVICE = '/dev/log'
 SYSLOG_FORMAT = '%(levelname)s %(name)s[%(process)d]: %(message)s'
 STDERR_FORMAT = '%(levelname)s %(name)s %(message)s'
+DEFAULT_POLICY = {
+    'indicator_types': ['IPv4', 'IPv6'],
+    'attribute_map': {
+        'ctsSecurityGroup': 'sgt',
+        'userName': 'user',
+    }
+}
 
 
 def main():
@@ -132,7 +139,7 @@ async def loop_main():
 
         queue = asyncio.Queue()
         coros = [
-            loop_minemeld(node, m_kwargs, queue),
+            loop_minemeld(node, m_kwargs, options['m']['policy'], queue),
         ]
 
         if options['x']['replay']:
@@ -273,7 +280,7 @@ async def init_pxgrid(x_kwargs):
 
 # session object:
 # https://github.com/cisco-pxgrid/pxgrid-rest-ws/wiki/Session-Directory#objects
-async def loop_minemeld(node, kwargs, queue):
+async def loop_minemeld(node, kwargs, policy, queue):
     sdb = {}  # Session DB
 
     retry = tenacity.AsyncRetrying(
@@ -333,15 +340,18 @@ async def loop_minemeld(node, kwargs, queue):
                         except ValueError as e:
                             logger.error('invalid IP: %s: %s', addr, e)
                             continue
-                        sgt = user = None
-                        if 'ctsSecurityGroup' in x:
-                            sgt = x['ctsSecurityGroup']
-                        if 'userName' in x:
-                            user = x['userName']
-                        if not (sgt or user):
-                            logger.warning('%s: no SGT or user', ip)
+                        if not indicator_type(ip) in policy['indicator_types']:
                             continue
-                        indicator = indicator_object(ip, sgt, user)
+                        attrs = {}
+                        for attr in policy['attribute_map']:
+                            if attr in x:
+                                attrs[policy['attribute_map'][attr]] = x[attr]
+                        if not attrs:
+                            logger.info('%s %s: no "attribute_map" attributes '
+                                        'in session %s', x['state'], ip,
+                                        list(policy['attribute_map'].keys()))
+                            # add indicator with no attributes
+                        indicator = indicator_object(ip, attrs)
                         if not sessions_synced:
                             indicators[str(ip)] = indicator
                             continue
@@ -355,7 +365,7 @@ async def loop_minemeld(node, kwargs, queue):
                                            resp, indicator)
                             continue
                         sdb[str(ip)] = indicator
-                        log_event(str(ip), x['state'], sgt, user)
+                        log_event(str(ip), x['state'], attrs)
 
                 elif x['state'] == 'DISCONNECTED':
                     for addr in x['ipAddresses']:
@@ -367,6 +377,8 @@ async def loop_minemeld(node, kwargs, queue):
                         if not sessions_synced:
                             logger.warning('%s DISCONNECTED in get_sessions():'
                                            ' %s', ip, x)
+                            continue
+                        if not indicator_type(ip) in policy['indicator_types']:
                             continue
                         if str(ip) not in sdb:
                             logger.warning('%s %s: not connected',
@@ -382,8 +394,10 @@ async def loop_minemeld(node, kwargs, queue):
                             log_http_error('delete_indicator',
                                            resp, indicator)
                             continue
-                        log_event(str(ip), x['state'], sdb[str(ip)]['sgt'],
-                                  sdb[str(ip)]['user'])
+                        attrs = {k: sdb[str(ip)][k] for k in
+                                 policy['attribute_map'].values()
+                                 if k in sdb[str(ip)]}
+                        log_event(str(ip), x['state'], attrs)
                         del sdb[str(ip)]
 
                 else:
@@ -418,9 +432,11 @@ def log_http_error(name, resp, indicator):
     logger.error('%s: %d %s: %s', name, resp.status, resp.reason, indicator)
 
 
-def log_event(indicator, state, sgt, user):
-    logger.info('%s %s: sgt=%s user=%s', indicator, state,
-                sgt, user)
+def log_event(indicator, state, attributes=None):
+    if attributes is None or not attributes:
+        logger.info('%s %s', indicator, state)
+    else:
+        logger.info('%s %s: %s', indicator, state, attributes)
 
 
 def indicator_type(ip):
@@ -430,15 +446,14 @@ def indicator_type(ip):
         return 'IPv6'
 
 
-def indicator_object(ip, sgt, user):
+def indicator_object(ip, attributes):
     x = {
         'indicator': str(ip),
         'type': indicator_type(ip),
         'share_level': 'red',
-        'user': user,
-        'sgt': sgt,
         'ttl': 'disabled',  # any non-int disables expiration
     }
+    x.update(attributes)
 
     return x
 
@@ -520,6 +535,7 @@ def parse_opts():
 
     options_m = {
         'config': {},
+        'policy': None,
         'uri': None,
         'username': None,
         'password': None,
@@ -556,7 +572,7 @@ def parse_opts():
         # MineMeld
         'minemeld', 'uri=', 'username=', 'node=',
         # pxGrid
-        'pxgrid', 'nodename=', 'cert=', 'replay=',
+        'pxgrid', 'nodename=', 'cert=', 'policy=', 'replay=',
     ]
 
     try:
@@ -581,6 +597,30 @@ def parse_opts():
                 with open(arg, 'r') as f:
                     x = json.load(f)
                     opt_update(context, 'config', x)
+            except (IOError, ValueError) as e:
+                print('%s: %s' % (arg, e), file=sys.stderr)
+                sys.exit(1)
+        elif opt == '--policy':
+            try:
+                with open(arg, 'r') as f:
+                    x = json.load(f)
+                    if 'indicator_types' not in x:
+                        print('%s: no "indicator_types" key in policy object' %
+                              arg, file=sys.stderr)
+                        sys.exit(1)
+                    if not isinstance(x['indicator_types'], list):
+                        print('%s: "indicator_types" not list' %
+                              arg, file=sys.stderr)
+                        sys.exit(1)
+                    if 'attribute_map' not in x:
+                        print('%s: no "attribute_map" key in policy object' %
+                              arg, file=sys.stderr)
+                        sys.exit(1)
+                    if not isinstance(x['attribute_map'], dict):
+                        print('%s: "attribute_map" not dict' %
+                              arg, file=sys.stderr)
+                        sys.exit(1)
+                    opt_set(context, opt[2:], x)
             except (IOError, ValueError) as e:
                 print('%s: %s' % (arg, e), file=sys.stderr)
                 sys.exit(1)
@@ -662,6 +702,8 @@ def parse_opts():
     for x in ['uri', 'username', 'password', 'node', 'timeout']:
         if x in options_m['config'] and options_m[x] is None:
             options_m[x] = options_m['config'][x]
+    if options_m['policy'] is None:
+        options_m['policy'] = DEFAULT_POLICY
     if 'verify' in options_m['config'] and options_m['verify'] is None:
         options_m['verify'] = opt_verify(options_m['config']['verify'])
     if options_m['verify'] is None:
@@ -682,6 +724,7 @@ def usage():
       --node name            localDB miner node name
       --verify opt           SSL server verify option: yes|no|path
       --timeout timeout      connect, read timeout
+      --policy path          JSON session processing policy object
       -F path                JSON options (multiple -F's allowed)
     --pxgrid                 pxGrid options follow
       --hostname hostname    ISE hostname (multiple --hostname's allowed)
