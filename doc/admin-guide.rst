@@ -887,6 +887,14 @@ Copy the service unit file in place and verify::
   # systemctl start gridmeld
   # systemctl status gridmeld
 
+Troubleshooting can be performed by querying the contents of
+the systemd journal using
+`journalctl
+<http://manpages.ubuntu.com/manpages/bionic/man1/journalctl.1.html>`_::
+
+  $ journalctl -n -u gridmeld
+  $ journalctl -f -u gridmeld
+
 Enable the service to start on boot and verify it is started after
 a system reboot::
 
