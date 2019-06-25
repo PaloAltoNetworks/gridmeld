@@ -880,12 +880,20 @@ needed for your environment::
 
 Copy the service unit file in place and verify::
 
-  $ sudo bash
-  # cp gridmeld.service /lib/systemd/system
+  $ sudo cp gridmeld.service /lib/systemd/system
 
-  # systemctl daemon-reload
-  # systemctl start gridmeld
-  # systemctl status gridmeld
+.. note:: The Polkit
+	  `Local Authority
+	  <http://manpages.ubuntu.com/manpages/bionic/man8/pklocalauthority.8.html>`_
+	  will manage administrator authentication when required via a configuration
+	  of ``AdminIdentities=unix-group:sudo``; sudo is not
+	  used below for ``systemctl`` commands, although it can be used if desired.
+
+::
+
+  $ systemctl daemon-reload
+  $ systemctl start gridmeld
+  $ systemctl status gridmeld
 
 Troubleshooting can be performed by querying the contents of
 the systemd journal using
@@ -898,13 +906,13 @@ the systemd journal using
 Enable the service to start on boot and verify it is started after
 a system reboot::
 
-  # systemctl stop gridmeld
-  # systemctl enable gridmeld
-  # systemctl reboot
+  $ systemctl stop gridmeld
+  $ systemctl enable gridmeld
+  $ systemctl reboot
 
 Wait for boot, then check the service status::
 
-  # systemctl status gridmeld
+  $ systemctl status gridmeld
 
 References
 ----------
