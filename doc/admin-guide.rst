@@ -560,8 +560,8 @@ Running the ``gridmeld`` Gateway Application
 #. MineMeld loop:
 
    * Read session events from queue.
-   * Process *STARTED* and *DISCONNECTED* events by adding
-     or deleting indicator in ``localDB`` node.
+   * Process events according to the session policy by adding or
+     deleting indicators in the ``localDB`` node.
 
 By default ``gate.py`` logs to **stderr** and runs in the foreground.
 It can run in the background by specifying the ``--daemon`` option,
@@ -604,13 +604,17 @@ option; for example using the configuration discussed previously::
 MineMeld Session Processing Policy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, **IPv4** and **IPv6** indicator types will be processed,
-and
-`session object
-<https://github.com/cisco-pxgrid/pxgrid-rest-ws/wiki/Session-Directory#session-object>`_
-``ctsSecurityGroup`` and ``userName`` fields are mapped to localDB
-``sgt`` and ``user`` attributes.  The default policy is represented by
-the JSON object::
+By default the MineMeld loop processes pxGrid session objects as
+follows:
+
+- *IPv4* and *IPv6* indicator types will be processed.
+
+- `session object
+  <https://github.com/cisco-pxgrid/pxgrid-rest-ws/wiki/Session-Directory#session-object>`_
+  ``ctsSecurityGroup`` and ``userName`` fields are mapped to ``localDB``
+  ``sgt`` and ``user`` attributes.
+
+The default policy is represented by the JSON object::
 
   {
       "indicator_types": ["IPv4", "IPv6"],
@@ -620,32 +624,48 @@ the JSON object::
       }
   }
 
-The ``gate.py --minemeld --policy`` *path* option can be used to change the
-default policy.  The following JSON object will process only **IPv4**
-indicator types and include the ``endpointOperatingSystem`` field using
-the ``os`` attribute when it exists in a session::
+The ``gate.py --minemeld --policy`` *path* option can be used to
+change the default policy.  The JSON object specified will be merged
+with the default policy using the Python ``dict.update()`` method
+(top-level key/value pairs in the default object are overwritten
+by keys in the ``--policy`` object specified).
 
-  $ cat policy.json
+Session Policy Examples
+.......................
+
+The following JSON object will update the default policy to include
+the ``endpointOperatingSystem`` field using the ``localDB`` ``os``
+attribute when it exists in a session::
+
+  $ cat policy1.json
   {
-      "indicator_types": ["IPv4"],
       "attribute_map": {
           "ctsSecurityGroup": "sgt",
           "userName": "user",
-          "endpointOperatingSystem": "os"
+	  "endpointOperatingSystem": "os"
       }
   }
 
-.. note:: Attribute names must not begin with the underscore character
-          (**_**).
+.. note:: ``localDB`` attribute names must not begin with the
+          underscore character (**_**).
+
+The following JSON object will update the default policy to process
+only *IPv4* indicator types::
+
+  $ cat policy2.json
+  {
+      "indicator_types": ["IPv4"]
+  }
 
 ``gate.py`` Example
 ~~~~~~~~~~~~~~~~~~~
 ::
 
    $ gate.py --minemeld -F gate-mm.json --pxgrid -F gate-ise-pw.json
-   INFO gate.py starting (gridmeld 0.3.0)
+   INFO gate.py starting (gridmeld 0.4.0)
    INFO gate.py MineMeld 0.9.60
    INFO gate.py pxGrid 2.0.0.13
+   INFO gate.py MineMeld session policy {'indicator_types': ['IPv4', 'IPv6'], 'attribute_map': {'ctsSecurityGroup': 'sgt', 'userName': 'user'}}
    INFO gridmeld.pxgrid.wsstomp get_sessions(): 2 session objects
    INFO gridmeld.pxgrid.wsstomp processing events from wss://ise-3.santan.local:8910/pxgrid/ise/pubsub /topic/com.cisco.ise.session
    INFO gate.py SDB size after session sync: 2

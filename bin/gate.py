@@ -283,6 +283,8 @@ async def init_pxgrid(x_kwargs):
 async def loop_minemeld(node, kwargs, policy, queue):
     sdb = {}  # Session DB
 
+    logger.info('MineMeld session policy: %s', policy)
+
     retry = tenacity.AsyncRetrying(
         before=tenacity.before_log(logger, logging.DEBUG),
         after=tenacity.after_log(logger, logging.WARN),
@@ -603,17 +605,10 @@ def parse_opts():
         elif opt == '--policy':
             try:
                 with open(arg, 'r') as f:
-                    x = json.load(f)
-                    if 'indicator_types' not in x:
-                        print('%s: no "indicator_types" key in policy object' %
-                              arg, file=sys.stderr)
-                        sys.exit(1)
+                    x = DEFAULT_POLICY.copy()
+                    x.update(json.load(f))
                     if not isinstance(x['indicator_types'], list):
                         print('%s: "indicator_types" not list' %
-                              arg, file=sys.stderr)
-                        sys.exit(1)
-                    if 'attribute_map' not in x:
-                        print('%s: no "attribute_map" key in policy object' %
                               arg, file=sys.stderr)
                         sys.exit(1)
                     if not isinstance(x['attribute_map'], dict):
