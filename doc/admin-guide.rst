@@ -525,6 +525,7 @@ Running the ``gridmeld`` Gateway Application
                                (default: log to stderr)
       --daemon                 run as a daemon
                                (default: run in foreground)
+      -T                       add time to default stderr log format
       --debug level            debug level (0-3)
       --version                display version
       --help                   display usage
@@ -555,11 +556,11 @@ Running the ``gridmeld`` Gateway Application
    * Perform bulk download of all existing sessions using the REST API.
    * Sync sessions with ``localDB`` indicators.
    * Subscribe to session directory updates using the WebSocket API.
-   * Send session updates to MineMeld loop (using a Queue).
+   * Send session updates to MineMeld loop (using an asyncio queue).
 
 #. MineMeld loop:
 
-   * Read session events from queue.
+   * Read session events from the queue.
    * Process events according to the session policy by adding or
      deleting indicators in the ``localDB`` node.
 

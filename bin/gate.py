@@ -47,6 +47,7 @@ logger = None
 SYSLOG_DEVICE = '/dev/log'
 SYSLOG_FORMAT = '%(levelname)s %(name)s[%(process)d]: %(message)s'
 STDERR_FORMAT = '%(levelname)s %(name)s %(message)s'
+STDERR_FORMAT_TIME = '%(asctime)s ' + STDERR_FORMAT
 DEFAULT_POLICY = {
     'indicator_types': ['IPv4', 'IPv6'],
     'attribute_map': {
@@ -80,7 +81,10 @@ async def loop_main():
 
     if options['syslog'] is None:
         handler = logging.StreamHandler()  # default sys.stderr
-        formatter = logging.Formatter(STDERR_FORMAT)
+        if options['stderr_time']:
+            formatter = logging.Formatter(STDERR_FORMAT_TIME)
+        else:
+            formatter = logging.Formatter(STDERR_FORMAT)
     else:
         facility = SysLogHandler.facility_names[options['syslog']]
         handler = SysLogHandler(address=SYSLOG_DEVICE,
@@ -562,10 +566,11 @@ def parse_opts():
         'x': options_x,
         'syslog': None,
         'daemon': False,
+        'stderr_time': False,
         'debug': 0,
     }
 
-    short_options = '-F:'
+    short_options = '-F:T'
     long_options = [
         'help', 'version', 'debug=',
         'syslog=', 'daemon', 'timeout=',
@@ -664,6 +669,8 @@ def parse_opts():
                 sys.exit(1)
         elif opt == '--daemon':
             options['daemon'] = True
+        elif opt == '-T':
+            options['stderr_time'] = True
         elif opt == '--debug':
             try:
                 options['debug'] = int(arg)
@@ -734,6 +741,7 @@ def usage():
                              (default: log to stderr)
     --daemon                 run as a daemon
                              (default: run in foreground)
+    -T                       add time to default stderr log format
     --debug level            debug level (0-3)
     --version                display version
     --help                   display usage
