@@ -375,7 +375,7 @@ indicators from a variety of sources and make them available for
 consumption by the Palo Alto Networks security platform
 and to multi-vendor peers.
 
-.. note:: ``gridmeld`` functionality is not implemented as a miner
+.. note:: ``gridmeld`` functionality is not available as a miner
 	  because MineMeld is currently implemented using Python 2.7,
 	  which does not support ``asyncio``.
 
@@ -390,54 +390,135 @@ or you can use an
 <https://www.paloaltonetworks.com/documentation/autofocus/autofocus/autofocus_admin_guide/autofocus-apps/minemeld/use-autofocus-hosted-minemeld>`_
 in the cloud.
 
-.. note:: When using AutoFocus-hosted MineMeld you will need to allow
+.. note:: When using AutoFocus-hosted MineMeld you need to allow
           inbound API access from the cloud to your PAN-OS firewalls
-          or Panorama to allow ``registered-ip`` object updates from
+          or Panoramas to allow ``registered-ip`` object updates from
 	  the ``dagPusher`` output node.
 
-MineMeld Node Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MineMeld Nodes Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The configuration required is a ``stdlib.localDB`` miner node and a
-``dagPusher`` output node as follows::
+The configuration required is a ``localDB`` miner node connected to
+a ``dagPusherNg`` output node.
+
+``stdlib.localDB`` Miner
+........................
+
+The class ``minemeld.ft.localdb.Miner`` implements a miner with a
+database containing indicators of various types (e.g., *IPv4* and
+*IPv6*) and attributes for the indicators.  The ``stdlib.localDB``
+prototype is used to create the miner node.
+
+``gridmeld`` will populate the ``localDB`` node with IP indicators
+from pxGrid sessions using the MineMeld config API.  The indicator
+``sgt`` attribute will contain the SGT for each IP in the session.
+
+``dagPusherNg`` Output Node
+...........................
+
+The class ``minemeld.ft.dag_ng.DagPusher`` implements an output node
+which consumes indicators from an input node, in this case a
+``localDB`` node, and uses the PAN-OS XML API to synchronize the
+indicators as ``registered-ip`` objects on configured firewalls and
+Panoramas.  The ``dagPusherNg`` prototype is used to create the output
+node.
+
+The prototype configuration specifies ``tag_attributes``, which are
+the indicator attributes in ``localDB`` that will be used for the
+``registered-ip`` object tags.  The configuration can also specify a
+``tag_prefix`` which is used to identify tags owned by the node; the
+default is ``mmld_``.  The tag name will be the concatenation of
+*tag_prefix*, *tag_attribute* and *attribute*; for example:
+``mmld_sgt_Employees``.
+
+`Dynamic Address Group objects
+<https://docs.paloaltonetworks.com/pan-os/9-0/pan-os-admin/policy/monitor-changes-in-the-virtual-environment/use-dynamic-address-groups-in-policy>`_
+(DAGs) can be created by using the object tags in a match expression.
+The DAGs can be used in a security policy as source and destination
+for policy enforcement.
+
+``dagPusher`` Implementations
+.............................
+
+There are two ``dagPusher`` implementations:
+
+- class ``minemeld.ft.dag.DagPusher`` (prototype ``stdlib.dagPusher``)
+
+  This is the legacy node and should only be used if you are using
+  Autofocus-hosted MineMeld, or when the devices are using PAN-OS
+  7.1.
+
+- class ``minemeld.ft.dag_ng.DagPusher`` (prototype
+  ``stdlib.dagPusherNg``)
+
+  This is the next generation node and is the recommended
+  implementation to use.  It contains a number of functional and
+  performance enhancements made to the legacy node.  It requires
+  PAN-OS 8.0 or greater.  ``dagPusherNg`` is available starting with
+  MineMeld 0.9.62.
+
+Nodes Configuration
+...................
+
+We first need to create a local prototype from the pre-defined
+``stdlib.dagPusherNg`` prototype so we can add the ``sgt``
+attribute to the ``tag_attributes`` config.
+
+A ``minemeldlocal.stdlib_dagPusherNg-sgt`` prototype is created at
+CONFIG->browse prototypes->Search "dagPusherNg"->select
+"stdlib.dagPusherNg".  Then create a new local prototype from
+``stdlib.dagPusherNg`` using **NEW** (create prototype from this) and
+add a config of ``{ "tag_attributes": ["sgt"] }``.  This will result
+in the following prototype in
+``/opt/minemeld/local/minemeldlocal.yml`` (we named the new prototype
+``stdlib_dagPusherNg-sgt``)::
+
+  prototypes:
+      stdlib_dagPusherNg-sgt:
+          class: minemeld.ft.dag_ng.DagPusher
+          config:
+              tag_attributes:
+              - sgt
+          description: 'Push IP unicast indicators to PAN-OS 8.0 and greater devices
+              via DAG.
+
+              '
+          development_status: EXPERIMENTAL
+          indicator_types:
+          - IPv4
+          - IPv6
+          node_type: output
+          tags: []
+
+Next we add a miner node using the ``stdlib.localDB`` prototype
+at CONFIG->browse prototypes->Search "localDB"->select "stdlib.localDB",
+then **CLONE** (new node from this prototype).
+
+Then we add the output node at CONFIG->browse prototypes->Search
+"stdlib_dagPusherNg-sgt"->select
+"minemeldlocal.stdlib_dagPusherNg-sgt", then **CLONE** (new node from
+this prototype), and specify the ``localDB`` node created above as
+**INPUT** (this connects the output node to the input node).
+
+Then **COMMIT** the configuration.
+
+The nodes configuration, connecting the ``localDB`` miner to the
+``dagPusherNg`` output node can be viewed in
+``/opt/minemeld/local/config/running-config.yml``::
 
   nodes:
-    localDB-1520449865122:
+    localDB-1561848312020:
       inputs: []
       output: true
       prototype: stdlib.localDB
-    stdlib_dagPusher-sgt-1520982676579:
-      indicator_types:
-      - IPv4
-      - IPv6
+    stdlib_dagPusherNg-sgt-1561848485387:
       inputs:
-      - localDB-1520449865122
-      node_type: output
+      - localDB-1561848312020
       output: false
-      prototype: minemeldlocal.stdlib_dagPusher-sgt
+      prototype: minemeldlocal.stdlib_dagPusherNg-sgt
 
-The ``minemeldlocal.stdlib_dagPusher-sgt`` prototype is created by
-creating a new local prototype from ``stdlib.dagPusher`` and adding a
-config of ``{ "tag_attributes": ["sgt"] }``, as in the following::
-
-  prototypes:
-    stdlib_dagPusher-sgt:
-        class: minemeld.ft.dag.DagPusher
-        config:
-            tag_attributes:
-            - sgt
-        description: 'Push IP unicast indicators to PAN-OS devices via DAG.
-
-            '
-        development_status: STABLE
-        indicator_types:
-        - IPv4
-        - IPv6
-        node_type: output
-        tags: []
-
-``stdlib_dagPusher-sgt`` Node Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``stdlib_dagPusherNg-sgt`` Node Configuration
+.............................................
 
 The PAN-OS firewalls and Panoramas to be updated with
 ``registered-ip`` objects representing IP-SGT mappings are configured
@@ -446,7 +527,7 @@ containing YAML.  The device list resides in the
 ``/opt/minemeld/local/config`` directory and is named *node*\
 ``_device_list.yml``, where *node* is the name of the output node::
 
-  minemeld@minemeld:/opt/minemeld/local/config$ cat stdlib_dagPusher-sgt-1520982676579_device_list.yml
+  $ cat /opt/minemeld/local/config/stdlib_dagPusherNg-sgt-1561848485387_device_list.yml
   - {api_password: admin, api_username: admin, hostname: 192.168.1.102, name: vm-50-1}
   - {api_password: admin, api_username: admin, hostname: 192.168.1.110, name: pa-220-2}
 
@@ -456,7 +537,7 @@ The device configuration variables are:
 =========================  ========    ==============================     ==========
 Variable Name              Type        Description                        Default
 =========================  ========    ==============================     ==========
-hostname                   string      PAN-OS hostname                    null
+hostname                   string      PAN-OS hostname or IP address      null
 api_username               string      user for type=keygen               null
 api_password               string      password for type=keygen           null
 api_key                    string      key for API requests               null
@@ -466,7 +547,11 @@ name                       string      optional friendly hostname         null
 .. note::
    The device list file is a list of dictionaries.
 
-   You must specify either ``api_key`` or ``api_username`` and ``api_password``.
+   You must specify either ``api_key``, or ``api_username`` and
+   ``api_password``.
+
+   The **DEVICES** tab does not currently allow you to specify an ``api_key``.
+   To use API keys you can update the device list file manually.
 
 MineMeld Config API
 ~~~~~~~~~~~~~~~~~~~
@@ -476,7 +561,7 @@ The MineMeld config API is used to add and delete indicators in the
 URI of the MineMeld host and an admin username and password.
 
 As a best practice it is recommended to add a ``gridmeld`` admin;
-admin users are managed in the *ADMIN* tab in the MineMeld UI.
+admin users are managed in the **ADMIN** tab in the MineMeld UI.
 
 ``meld.py`` and ``gate.py`` also have a ``--verify`` option to specify
 the trusted CA certificate for server certificate verification.  If your
@@ -590,7 +675,7 @@ option; for example using the configuration discussed previously::
       "uri": "https://minemeld.santan.local",
       "username": "gridmeld",
       "password": "paloalto",
-      "node": "localDB-1520449865122",
+      "node": "localDB-1561848312020",
       "verify": "mm-cert.pem"
   }
 
@@ -684,28 +769,36 @@ only *IPv4* indicator types::
 Verify ``registered-ip`` objects are being pushed to a configured PAN-OS
 system::
 
-   admin@pa-220-2> show object registered-ip all
+   admin@pa-220> show object registered-ip all
 
    registered IP                             Tags
    ----------------------------------------  -----------------
 
    172.16.1.100 #
-                                            "mmld_pushed (never expire) "
-                                            "mmld_sgt_Auditors (never expire) "
+                                            "mmld_pushed (never expire)"
+                                            "mmld_sgt_Auditors (never expire)"
+
+   172.16.1.101 #
+                                            "mmld_pushed (never expire)"
+                                            "mmld_sgt_Contractors (never expire)"
+
+   ::
+                                            "mmld_canary_for_resync (expire in 322 seconds)"
 
    172.16.1.102 #
-                                            "mmld_pushed (never expire) "
-                                            "mmld_sgt_Developers (never expire) "
+                                            "mmld_pushed (never expire)"
+                                            "mmld_sgt_Employees (never expire)"
 
-   Total: 2 registered addresses
+   Total: 4 registered addresses
    *: received from user-id agent  #: persistent
 
 When run in the foreground, ``gate.py`` is terminated with ^C (Control-C)::
 
    ^CINFO gate.py got SIGINT, exiting
-   INFO gate.py exiting
    INFO gate.py loop_minemeld exiting
    INFO gate.py loop_pxgrid exiting
+   INFO gate.py loop_main exiting
+   INFO gate.py exiting
 
 Ubuntu 18.04 Configuration
 --------------------------
@@ -940,6 +1033,13 @@ References
 
 - `gridmeld GitHub Repository
   <https://github.com/PaloAltoNetworks/gridmeld>`_
+
+- `Register IP Addresses and Tags Dynamically on PAN-OS
+  <https://docs.paloaltonetworks.com/pan-os/9-0/pan-os-admin/policy/register-ip-addresses-and-tags-dynamically>`_
+
+- `Use Dynamic Address Groups in Policy on PAN-OS (includes
+  registered-ip object capacity for each model)
+  <https://docs.paloaltonetworks.com/pan-os/9-0/pan-os-admin/policy/monitor-changes-in-the-virtual-environment/use-dynamic-address-groups-in-policy>`_
 
 - `Palo Alto Networks MineMeld
   <https://www.paloaltonetworks.com/products/secure-the-network/subscriptions/minemeld>`_
