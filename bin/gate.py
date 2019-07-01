@@ -68,6 +68,8 @@ def main():
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
 
+    logger.info('exiting')
+
 
 def exit_(signame):
     logger.info('got %s, exiting', signame)
@@ -77,6 +79,17 @@ def exit_(signame):
 
 
 async def loop_main():
+    async def wait_for_cancelled():
+        current_task = asyncio.Task.current_task()
+        if current_task is not None:
+            for task in asyncio.Task.all_tasks():
+                if task is current_task:
+                    continue
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    logger.debug('task cancelled: %s', task)
+
     options = parse_opts()
 
     if options['syslog'] is None:
@@ -166,15 +179,17 @@ async def loop_main():
         for task in pending:
             logger.debug('cancel task: %s', task)
             task.cancel()
+        await wait_for_cancelled()
 
     except RuntimeError:
         pass
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
+        await wait_for_cancelled()
     except Exception as e:
         logger.error('%s', e, exc_info=True)
-
-    logger.info('exiting')
+    finally:
+        logger.info('%s exiting', inspect.stack()[0][3])
 
 
 async def init_minemeld(node, m_kwargs):
@@ -424,6 +439,7 @@ async def loop_minemeld(node, kwargs, policy, queue):
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
+        raise
     except (gridmeld.minemeld.api.MinemeldApiError,
             aiohttp.ClientError) as e:
         logger.error('%s: %s: %s', inspect.stack()[0][3],
@@ -473,6 +489,7 @@ async def loop_pxgrid(kwargs, rest_secret, queue):
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
+        raise
     except (gridmeld.pxgrid.wsstomp.PxgridWsStompError,
             aiohttp.ClientError) as e:
         logger.error('%s: %s: %s', inspect.stack()[0][3],
@@ -492,6 +509,7 @@ async def loop_replay(sessions, queue):
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
+        raise
     except Exception as e:
         logger.error('%s', e, exc_info=True)
     finally:
