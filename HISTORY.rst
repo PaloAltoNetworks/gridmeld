@@ -1,6 +1,27 @@
 ``gridmeld`` Release History
 ============================
 
+0.4.0 (2019-07-03)
+------------------
+
+- gate.py: Add "gate.py --minemeld --policy path" option to allow
+  customization of MineMeld session processing policy.
+
+- Documentation updates.
+
+- gate.py: Add gate.py -T option to add time to default stderr log
+  format.
+
+- gate.py: In loop_main() when FIRST_COMPLETED or receive
+  CancelledError, loop through other tasks and wait for them to
+  re-raise CancelledError.  Addresses periodic "asyncio Task was
+  destroyed but it is pending!" on exit.
+
+- admin-guide.rst, README.rst: Update MineMeld configuration
+  documentaton to use dagPusherNg.  This is available in MineMeld
+  0.9.62 and contains a number of functional and performance
+  enhancements made to the legacy node.
+
 0.3.0 (2019-06-15)
 ------------------
 
