@@ -601,7 +601,7 @@ def parse_opts():
         # MineMeld
         'minemeld', 'uri=', 'username=', 'node=',
         # pxGrid
-        'pxgrid', 'nodename=', 'cert=', 'policy=', 'replay=',
+        'pxgrid', 'hostname=', 'nodename=', 'cert=', 'policy=', 'replay=',
     ]
 
     try:
@@ -663,11 +663,11 @@ def parse_opts():
         elif opt == '--node':
             opt_set(context, opt[2:], arg)
         elif opt == '--hostname':
-            opt_set(context, opt[2:], arg)
+            opt_append(context, opt[2:], arg)
         elif opt == '--username':
             opt_set(context, opt[2:], arg)
         elif opt == '--nodename':
-            opt_append(context, opt[2:], arg)
+            opt_set(context, opt[2:], arg)
         elif opt == '--password':
             opt_set(context, opt[2:], arg)
         elif opt == '--cert':
