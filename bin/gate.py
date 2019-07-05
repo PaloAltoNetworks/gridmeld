@@ -26,6 +26,7 @@ import json
 import logging
 from logging.handlers import SysLogHandler
 import os
+import platform
 import pprint
 import signal
 import sys
@@ -127,6 +128,9 @@ async def loop_main():
 
     logger = logging.getLogger(os.path.basename(sys.argv[0]))
     logger.info('starting (gridmeld %s)', __version__)
+    x = platform.uname()
+    logger.info('Python %s %s %s %s', platform.python_version(),
+                x.system, x.release, x.version)
 
     m_kwargs = {}
     for x in ['uri', 'username', 'password',

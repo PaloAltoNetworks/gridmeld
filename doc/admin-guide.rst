@@ -749,6 +749,7 @@ only *IPv4* indicator types::
 
    $ gate.py --minemeld -F gate-mm.json --pxgrid -F gate-ise-pw.json
    INFO gate.py starting (gridmeld 0.4.0)
+   INFO gate.py Python 3.7.3 OpenBSD 6.5 GENERIC.MP#1
    INFO gate.py MineMeld 0.9.60
    INFO gate.py pxGrid 2.0.0.13
    INFO gate.py MineMeld session policy {'indicator_types': ['IPv4', 'IPv6'], 'attribute_map': {'ctsSecurityGroup': 'sgt', 'userName': 'user'}}
