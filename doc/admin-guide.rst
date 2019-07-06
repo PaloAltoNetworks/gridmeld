@@ -62,9 +62,9 @@ on GitHub and as a
 on PyPi for installing with
 `pip <https://pip.pypa.io/en/stable/installing/>`_.
 
-``gridmeld`` should run on any Unix system with Python 3.6, and has been
-tested on OpenBSD 6.4 and Ubuntu 18.04.  Its module dependencies are
-``aiohttp`` and ``tenacity``.
+``gridmeld`` should run on any Unix system with Python 3.6 or 3.7, and
+has been tested on OpenBSD 6.5 and Ubuntu 18.04.  Its module
+dependencies are ``aiohttp`` and ``tenacity``.
 
 gridmeld Command Line Programs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
