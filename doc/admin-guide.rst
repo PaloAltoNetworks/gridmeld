@@ -236,10 +236,18 @@ Using pxGrid Username/Password Authentication
 `Username/Password authentication
 <https://developer.cisco.com/docs/pxgrid/#!using-pre-shared-keys>`_
 is an alternative to client certificate authentication.
-It is configured with the following steps:
+
+A pxGrid client account is configured with the following steps:
 
 #. Create the account using the ``AccountCreate`` API request;
    this provides a *password*.
+
+   .. note:: In order to allow a pxGrid client to register itself and
+             create the account via the REST API, you must enable
+             *Allow password based account creation* at
+             Administration->pxGrid Services->Settings; by default
+             this is disabled.  This can be disabled after the account
+             is created.
 
 #. Activate the account using the ``AccountActivate`` API request;
    this places the account in the *PENDING* state.
