@@ -358,6 +358,8 @@ async def loop_minemeld(node, kwargs, policy, queue):
                     logger.warning('empty ipAddresses: %s', x)
                     continue
 
+                timestamp = x['timestamp'] if 'timestamp' in x else None
+
                 if x['state'] == 'STARTED':
                     for addr in x['ipAddresses']:
                         try:
@@ -406,8 +408,8 @@ async def loop_minemeld(node, kwargs, policy, queue):
                         if not indicator_type(ip) in policy['indicator_types']:
                             continue
                         if str(ip) not in sdb:
-                            logger.warning('%s %s: not connected',
-                                           ip, x['state'])
+                            logger.warning('%s %s %s: not connected',
+                                           ip, x['state'], timestamp)
                             continue
                         resp = await retry.call(
                             api.delete_indicator,
@@ -427,8 +429,8 @@ async def loop_minemeld(node, kwargs, policy, queue):
 
                 else:
                     for addr in x['ipAddresses']:
-                        logger.info('%s %s: no action on event',
-                                    addr, x['state'])
+                        logger.info('%s %s %s: no action on event',
+                                    addr, x['state'], timestamp)
                     continue
 
                 if not sessions_synced:
