@@ -1,6 +1,21 @@
 ``gridmeld`` Release History
 ============================
 
+0.5.0 (2019-07-20)
+------------------
+
+- gate.py: Log Python version and operating system information at
+  startup.
+
+- gate.py: Fix command line --pxgrid --hostname and --nodename
+  options: swapped logic and missing long option.
+
+- setup.py, admin-guide.rst: Support Python 3.7.
+
+- Documentation updates.
+
+- gate.py: Log timestamp field from session for skipped events.
+
 0.4.0 (2019-07-03)
 ------------------
 
@@ -18,7 +33,7 @@
   destroyed but it is pending!" on exit.
 
 - admin-guide.rst, README.rst: Update MineMeld configuration
-  documentaton to use dagPusherNg.  This is available in MineMeld
+  documentation to use dagPusherNg.  This is available in MineMeld
   0.9.62 and contains a number of functional and performance
   enhancements made to the legacy node.
 
