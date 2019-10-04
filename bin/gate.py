@@ -51,6 +51,8 @@ STDERR_FORMAT = '%(levelname)s %(name)s %(message)s'
 STDERR_FORMAT_TIME = '%(asctime)s ' + STDERR_FORMAT
 DEFAULT_POLICY = {
     'indicator_types': ['IPv4', 'IPv6'],
+    'include_networks': [],  # empty: include all
+    'exclude_networks': [],  # empty: exclude none
     'attribute_map': {
         'ctsSecurityGroup': 'sgt',
         'userName': 'user',
@@ -369,6 +371,8 @@ async def loop_minemeld(node, kwargs, policy, queue):
                             continue
                         if not indicator_type(ip) in policy['indicator_types']:
                             continue
+                        if not networks_policy(ip, policy):
+                            continue
                         attrs = {}
                         for attr in policy['attribute_map']:
                             if attr in x:
@@ -406,6 +410,8 @@ async def loop_minemeld(node, kwargs, policy, queue):
                                            ' %s', ip, x)
                             continue
                         if not indicator_type(ip) in policy['indicator_types']:
+                            continue
+                        if not networks_policy(ip, policy):
                             continue
                         if str(ip) not in sdb:
                             logger.warning('%s %s %s: not connected',
@@ -472,6 +478,17 @@ def indicator_type(ip):
         return 'IPv4'
     elif ip.version == 6:
         return 'IPv6'
+
+
+def networks_policy(ip, policy):
+    for x in policy['include_networks']:
+        if ip not in x:
+            return False
+    for x in policy['exclude_networks']:
+        if ip in x:
+            return False
+
+    return True
 
 
 def indicator_object(ip, attributes):
@@ -640,6 +657,20 @@ def parse_opts():
                         print('%s: "indicator_types" not list' %
                               arg, file=sys.stderr)
                         sys.exit(1)
+                    for k in ['include_networks', 'exclude_networks']:
+                        if not isinstance(x[k], list):
+                            print('%s: "%s" not list' %
+                                  (arg, k), file=sys.stderr)
+                            sys.exit(1)
+                        ipnetworks = []
+                        for net in x[k]:
+                            try:
+                                ipnetworks.append(ipaddress.ip_network(net))
+                            except ValueError as e:
+                                print('%s: %s: %s' % (arg, k, e),
+                                      file=sys.stderr)
+                                sys.exit(1)
+                        x[k] = ipnetworks
                     if not isinstance(x['attribute_map'], dict):
                         print('%s: "attribute_map" not dict' %
                               arg, file=sys.stderr)

@@ -703,6 +703,8 @@ follows:
 
 - *IPv4* and *IPv6* indicator types will be processed.
 
+- Hosts in all IP networks are processed.
+
 - `session object
   <https://github.com/cisco-pxgrid/pxgrid-rest-ws/wiki/Session-Directory#session-object>`_
   ``ctsSecurityGroup`` and ``userName`` fields are mapped to ``localDB``
@@ -712,6 +714,8 @@ The default policy is represented by the JSON object::
 
   {
       "indicator_types": ["IPv4", "IPv6"],
+      "include_networks": [],
+      "exclude_networks": [],
       "attribute_map": {
           "ctsSecurityGroup": "sgt",
           "userName": "user"
@@ -729,7 +733,8 @@ Session Policy Examples
 
 The following JSON object will update the default policy to include
 the ``endpointOperatingSystem`` field using the ``localDB`` ``os``
-attribute when it exists in a session::
+attribute when it exists in a session.
+::
 
   $ cat policy1.json
   {
@@ -744,11 +749,33 @@ attribute when it exists in a session::
           underscore character (**_**).
 
 The following JSON object will update the default policy to process
-only *IPv4* indicator types::
+only *IPv4* indicator types.
+::
 
   $ cat policy2.json
   {
       "indicator_types": ["IPv4"]
+  }
+
+The following JSON object will update the default policy to only
+process (include) hosts in network 10.0.0.0/8 and not process
+(exclude) hosts in networks 10.2.100.0/24 and 10.3.100.0/24.
+
+Networks are specified as *prefix/length* and IPv4 and IPv6 networks
+are allowed.  The policy match order is *include* then *exclude*, and
+the empty list means *include all* and *exclude none* respectively.
+
+.. note:: The Python `ipaddress
+	  <https://docs.python.org/3/library/ipaddress.html>`_
+	  module ``ip_network()`` function is used to create
+	  the network object and test for hosts in the networks.
+
+::
+
+  $ cat policy3.json
+  {
+      "include_networks": ["10.0.0.0/8"],
+      "exclude_networks": ["10.2.100.0/24", "10.3.100.0/24"]
   }
 
 ``gate.py`` Example
