@@ -397,6 +397,7 @@ async def loop_minemeld(node, kwargs, policy, queue):
                             continue
                         sdb[str(ip)] = indicator
                         log_event(str(ip), x['state'], attrs)
+                        log_sdb(sdb)
 
                 elif x['state'] == 'DISCONNECTED':
                     for addr in x['ipAddresses']:
@@ -430,8 +431,9 @@ async def loop_minemeld(node, kwargs, policy, queue):
                         attrs = {k: sdb[str(ip)][k] for k in
                                  policy['attribute_map'].values()
                                  if k in sdb[str(ip)]}
-                        log_event(str(ip), x['state'], attrs)
                         del sdb[str(ip)]
+                        log_event(str(ip), x['state'], attrs)
+                        log_sdb(sdb)
 
                 else:
                     for addr in x['ipAddresses']:
@@ -441,13 +443,6 @@ async def loop_minemeld(node, kwargs, policy, queue):
 
                 if not sessions_synced:
                     continue
-
-                msg = 'SDB size: %d' % len(sdb)
-                max = 5
-                if len(sdb) and len(sdb) <= max:
-                    msg += ': indicators (up to %d): %s' % \
-                           (max, list(sdb.keys()))
-                logger.info('%s', msg)
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
@@ -471,6 +466,14 @@ def log_event(indicator, state, attributes=None):
         logger.info('%s %s', indicator, state)
     else:
         logger.info('%s %s: %s', indicator, state, attributes)
+
+
+def log_sdb(sdb):
+    msg = 'SDB size: %d' % len(sdb)
+    max = 5
+    if len(sdb) and len(sdb) <= max:
+        msg += ': indicators (up to %d): %s' % (max, list(sdb.keys()))
+    logger.info('%s', msg)
 
 
 def indicator_type(ip):
