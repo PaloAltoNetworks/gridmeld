@@ -439,10 +439,6 @@ async def loop_minemeld(node, kwargs, policy, queue):
                     for addr in x['ipAddresses']:
                         logger.info('%s %s %s: no action on event',
                                     addr, x['state'], timestamp)
-                    continue
-
-                if not sessions_synced:
-                    continue
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
