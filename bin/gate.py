@@ -437,8 +437,17 @@ async def loop_minemeld(node, kwargs, policy, queue):
 
                 else:
                     for addr in x['ipAddresses']:
+                        try:
+                            ip = ipaddress.ip_address(addr)
+                        except ValueError as e:
+                            logger.error('invalid IP: %s: %s', addr, e)
+                            continue
+                        if not indicator_type(ip) in policy['indicator_types']:
+                            continue
+                        if not networks_policy(ip, policy):
+                            continue
                         logger.info('%s %s %s: no action on event',
-                                    addr, x['state'], timestamp)
+                                    ip, x['state'], timestamp)
 
     except asyncio.CancelledError:
         logger.debug('%s: CancelledError', inspect.stack()[0][3])
