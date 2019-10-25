@@ -1,6 +1,18 @@
 ``gridmeld`` Release History
 ============================
 
+0.6.0 (2019-10-25)
+------------------
+
+- gate.py: Add "include_networks" and "exclude_networks" to MineMeld
+  session processing policy (--policy object).
+
+- gate.py: Only log SDB size when updated by event.  Prevents log when
+  event discarded by policy.
+
+- gate.py: Apply session policy to event states not processed so 'no
+  action on event' logged only when IP matches policy.
+
 0.5.0 (2019-07-20)
 ------------------
 
